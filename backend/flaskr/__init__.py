@@ -13,72 +13,143 @@ def create_app(test_config=None):
   app = Flask(__name__)
   setup_db(app)
   
-  '''
-  @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
-  '''
 
-  '''
-  @TODO: Use the after_request decorator to set Access-Control-Allow
-  '''
-
-  '''
-  @TODO: 
-  Create an endpoint to handle GET requests 
-  for all available categories.
-  '''
+  # Cors
+  cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+  
+  @app.after_request
+  def after_request(response):
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    response.headers.add('Access-Control-Allow-Headers', 'GET, POST, PATCH, DELETE, OPTIONS')
+    return response
 
 
-  '''
-  @TODO: 
-  Create an endpoint to handle GET requests for questions, 
-  including pagination (every 10 questions). 
-  This endpoint should return a list of questions, 
-  number of total questions, current category, categories. 
+  # Utils
 
-  TEST: At this point, when you start the application
-  you should see questions and categories generated,
-  ten questions per page and pagination at the bottom of the screen for three pages.
-  Clicking on the page numbers should update the questions. 
-  '''
+  def get_categories_dict():
+    query = Category.query.all()
+    return {category.id: category.type for category in query}
 
-  '''
-  @TODO: 
-  Create an endpoint to DELETE question using a question ID. 
+  # Note to reviewer: To keep my route handlers tidy, I refactored some functionality
+  # into separate methods here, but it seems a bit weird to have them up here on top
+  # of this file. Any advice on best practices for better organizing such code in
+  # flask/pyhton is appreciated.
 
-  TEST: When you click the trash icon next to a question, the question will be removed.
-  This removal will persist in the database and when you refresh the page. 
-  '''
+  def create_question(payload):
+    question = Question(
+      answer = payload.get('answer'),
+      category = payload.get('category'),
+      difficulty = payload.get('difficutly'),
+      question = payload.get('question')
+    )
 
-  '''
-  @TODO: 
-  Create an endpoint to POST a new question, 
-  which will require the question and answer text, 
-  category, and difficulty score.
+    question.insert()    
+      
+    return jsonify({
+      'success': True
+    }), 200
 
-  TEST: When you submit a question on the "Add" tab, 
-  the form will clear and the question will appear at the end of the last page
-  of the questions list in the "List" tab.  
-  '''
+  def find_questions(term):
+    results = Question.query.filter(Question.question.ilike(f'%{term}%')).all()
 
-  '''
-  @TODO: 
-  Create a POST endpoint to get questions based on a search term. 
-  It should return any questions for whom the search term 
-  is a substring of the question. 
+    # If nothing is found, an empty list is returned.
+    # Aborting with a 404 code would result in an alert message in frontend, 
+    # falsely suggesting there was an error with processing the request.
 
-  TEST: Search by any phrase. The questions list will update to include 
-  only question that include that string within their question. 
-  Try using the word "title" to start. 
-  '''
+    questions = [question.format() for question in results]
 
-  '''
-  @TODO: 
-  Create a GET endpoint to get questions based on category. 
+    return jsonify({
+      'success': True,
+      'questions': questions,
+      'total_questions': len(questions),
+      'current_category': None
+      })
 
-  TEST: In the "List" tab / main screen, clicking on one of the 
-  categories in the left column will cause only questions of that 
-  category to be shown. 
-  '''
+
+  # Routes
+
+  @app.route('/')
+  def hello_world():
+    return jsonify({'message':'HELLO, WORLD!'})
+
+
+  @app.route('/categories')
+  def get_categories():
+
+    categories = get_categories_dict()
+
+    return jsonify({
+      'success': True,
+      'categories': categories
+      })
+
+
+  @app.route('/questions')
+  def get_questions():
+
+    page = request.args.get('page', 1, type=int)
+    start = (page - 1) * QUESTIONS_PER_PAGE
+    end = start + QUESTIONS_PER_PAGE
+
+    questions_query = Question.query.all()
+    questions = [question.format() for question in questions_query]
+
+    categories = get_categories_dict()
+
+    return jsonify({
+      'success': True,
+      'questions': questions[start:end],
+      'categories': categories,
+      'total_questions': len(questions),
+      'current_category': None
+      })
+
+
+  @app.route('/categories/<int:category_id>/questions')
+  def get_questions_by_category(category_id):
+
+    page = request.args.get('page', 1, type=int)
+    start = (page - 1) * QUESTIONS_PER_PAGE
+    end = start + QUESTIONS_PER_PAGE
+
+    questions_query = Question.query.filter_by(category=category_id)
+    questions = [question.format() for question in questions_query]
+
+    category_query = Category.query.filter_by(id=category_id).one_or_none()
+    category = { category_query.id: category_query.type }
+
+    return jsonify({
+      'success': True,
+      'questions': questions[start:end],
+      'total_questions': len(questions),
+      'current_category': category
+      })
+
+
+  @app.route('/questions/<int:question_id>', methods=['DELETE'])
+  def delete_question(question_id):
+    question = Question.query.filter_by(id=question_id).one_or_none()
+    
+    if question is None:
+      abort(404)
+
+    question.delete()
+
+    return jsonify({
+      'success': True
+    }), 200
+
+
+  @app.route('/questions', methods=['POST'])
+  def post_question():
+
+    payload = request.get_json()
+
+    if payload.get('searchTerm'):
+      return find_questions(payload.get('searchTerm'))
+
+    else: 
+      return create_question(payload)
 
 
   '''
