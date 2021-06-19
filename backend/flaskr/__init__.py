@@ -36,12 +36,20 @@ def create_app(test_config=None):
   # flask/pyhton is appreciated.
 
   def create_question(payload):
+    answer = payload.get('answer'),
+    category = payload.get('category'),
+    difficulty = payload.get('difficutly'),
+    question = payload.get('question')
+        
+    if (question == '' or answer == ''):
+      abort(422)
+
     try:
       question = Question(
-        answer = payload.get('answer'),
-        category = payload.get('category'),
-        difficulty = payload.get('difficutly'),
-        question = payload.get('question')
+        answer = answer, 
+        category = category,
+        difficulty = difficulty,
+        question = question
       )
 
       question.insert()    
