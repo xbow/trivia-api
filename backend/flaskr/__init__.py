@@ -36,25 +36,29 @@ def create_app(test_config=None):
   # flask/pyhton is appreciated.
 
   def create_question(payload):
-    question = Question(
-      answer = payload.get('answer'),
-      category = payload.get('category'),
-      difficulty = payload.get('difficutly'),
-      question = payload.get('question')
-    )
+    try:
+      question = Question(
+        answer = payload.get('answer'),
+        category = payload.get('category'),
+        difficulty = payload.get('difficutly'),
+        question = payload.get('question')
+      )
 
-    question.insert()    
-      
-    return jsonify({
-      'success': True
-    }), 200
+      question.insert()    
+      return jsonify({
+        'success': True
+      }), 200
+    
+    except:
+      abort(422)
+
 
   def find_questions(term):
     results = Question.query.filter(Question.question.ilike(f'%{term}%')).all()
 
     # If nothing is found, an empty list is returned.
-    # Aborting with a 404 code would result in an alert message in frontend, 
-    # falsely suggesting there was an error with processing the request.
+    # I find this more appropriate than a 404 (which would cause an alert 
+    # message in frontend)
 
     questions = [question.format() for question in results]
 
@@ -65,12 +69,20 @@ def create_app(test_config=None):
       'current_category': None
       })
 
+    
+  def paginate_questions(questions_query, page):
+    start = (page - 1) * QUESTIONS_PER_PAGE
+    end = start + QUESTIONS_PER_PAGE
 
-  # Routes
+    questions = [question.format() for question in questions_query]
+    return questions[start:end]
+
+
+  # Route handlers
 
   @app.route('/')
-  def hello_world():
-    return jsonify({'message':'HELLO, WORLD!'})
+  def status_message():
+    return jsonify({'status':'ok'})
 
 
   @app.route('/categories')
@@ -86,42 +98,36 @@ def create_app(test_config=None):
 
   @app.route('/questions')
   def get_questions():
-
     page = request.args.get('page', 1, type=int)
-    start = (page - 1) * QUESTIONS_PER_PAGE
-    end = start + QUESTIONS_PER_PAGE
 
     questions_query = Question.query.all()
-    questions = [question.format() for question in questions_query]
+    questions = paginate_questions(questions_query, page)
 
     categories = get_categories_dict()
 
     return jsonify({
       'success': True,
-      'questions': questions[start:end],
+      'questions': questions,
       'categories': categories,
-      'total_questions': len(questions),
+      'total_questions': len(questions_query),
       'current_category': None
       })
 
 
   @app.route('/categories/<int:category_id>/questions')
   def get_questions_by_category(category_id):
-
     page = request.args.get('page', 1, type=int)
-    start = (page - 1) * QUESTIONS_PER_PAGE
-    end = start + QUESTIONS_PER_PAGE
 
     questions_query = Question.query.filter_by(category=category_id)
-    questions = [question.format() for question in questions_query]
+    questions = paginate_questions(questions_query, page)
 
     category_query = Category.query.filter_by(id=category_id).one_or_none()
     category = { category_query.id: category_query.type }
 
     return jsonify({
       'success': True,
-      'questions': questions[start:end],
-      'total_questions': len(questions),
+      'questions': questions,
+      'total_questions': len(questions_query),
       'current_category': category
       })
 
@@ -154,36 +160,49 @@ def create_app(test_config=None):
   @app.route('/quizzes', methods=['POST'])
   def get_random_question():
 
-    payload = request.get_json()
+    try:
+      payload = request.get_json()
 
-    category_id = payload.get('quiz_category')['id']
-    previous_questions = payload.get('previous_questions')
+      category_id = payload.get('quiz_category')['id']
+      previous_questions = payload.get('previous_questions')
 
-    all_questions = []
-    if (category_id == 0):
-      all_questions = Question.query.all() 
-    else:
-      all_questions = Question.query.filter_by(category = category_id).all()
-      
-    unanswered_questions = [question for question in all_questions if question.id not in previous_questions]
+      all_questions = []
+      if (category_id == 0):
+        all_questions = Question.query.all() 
+      else:
+        all_questions = Question.query.filter_by(category = category_id).all()
+        
+      unanswered_questions = [question for question in all_questions if question.id not in previous_questions]
 
-    if (len(unanswered_questions) < 1):
-      abort(404)
+      random_index = random.randrange(0, len(unanswered_questions), 1)
+      random_question = unanswered_questions[random_index]  
 
-    random_index = random.randrange(0, len(unanswered_questions), 1)
-    random_question = unanswered_questions[random_index]
+      return jsonify({
+        'success': True,
+        'question': random_question.format()
+      })  
 
+    except:
+      abort(422)
+
+
+  # Error handlers
+  @app.errorhandler(404)
+  def not_found(error):
     return jsonify({
-      'success': True,
-      'question': random_question.format()
-    })    
-
-  '''
-  @TODO: 
-  Create error handlers for all expected errors 
-  including 404 and 422. 
-  '''
+      'success': False,
+      'error': 404,
+       'message': 'resource not found'
+        }), 404
   
+  @app.errorhandler(422)
+  def not_found(error):
+    return jsonify({
+      'success': False,
+      'error': 422,
+       'message': 'unprocessable entity'
+        }), 422
+
   return app
 
     
