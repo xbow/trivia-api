@@ -124,13 +124,21 @@ def create_app(test_config=None):
 
   @app.route('/categories/<int:category_id>/questions')
   def get_questions_by_category(category_id):
+
     page = request.args.get('page', 1, type=int)
-
-    questions_query = Question.query.filter_by(category=category_id)
-    questions = paginate_questions(questions_query, page)
-
     category_query = Category.query.filter_by(id=category_id).one_or_none()
+    
+    if (category_query is None):
+      abort(422)
+
     category = { category_query.id: category_query.type }
+    
+    questions_query = Question.query.filter_by(category=category_id).all()
+
+    if (len(questions_query) == 0):
+      abort(404)
+
+    questions = paginate_questions(questions_query, page)
 
     return jsonify({
       'success': True,
