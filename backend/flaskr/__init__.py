@@ -38,11 +38,12 @@ def create_app(test_config=None):
   def create_question(payload):
     answer = payload.get('answer'),
     category = payload.get('category'),
-    difficulty = payload.get('difficutly'),
+    difficulty = payload.get('difficulty'),
     question = payload.get('question')
-        
-    if (question == '' or answer == ''):
-      abort(422)
+
+    for value in [answer, category, difficulty, question]:
+      if value == '' or None:
+        abort(422)
 
     try:
       question = Question(
