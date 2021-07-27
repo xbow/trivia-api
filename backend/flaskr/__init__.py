@@ -42,8 +42,8 @@ def create_app(test_config=None):
     question = payload.get('question')
 
     for value in [answer, category, difficulty, question]:
-      if value == '' or None:
-        abort(422)
+      if value == None or value == '':
+        abort(400)
 
     try:
       question = Question(
@@ -204,6 +204,14 @@ def create_app(test_config=None):
 
 
   # Error handlers
+  @app.errorhandler(400)
+  def not_found(error):
+    return jsonify({
+      'success': False,
+      'error': 400,
+       'message': 'bad request'
+        }), 400
+
   @app.errorhandler(404)
   def not_found(error):
     return jsonify({

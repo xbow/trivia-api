@@ -171,15 +171,15 @@ class TriviaTestCase(unittest.TestCase):
 
     pass
   
-  def test_422_if_question_creation_fails(self):
-    '''It returns 422 when request is invalid'''
+  def test_400_for_bad_post_request(self):
+    '''It returns 400 when posting an invalid request to /questions'''
 
     initialCount = Question.query.count()
 
     response = self.client().post('/questions', json={ 'foo': 'bar' })
     data = json.loads(response.data)
 
-    self.assertEqual(response.status_code, 422)
+    self.assertEqual(response.status_code, 400)
     
     newCount = Question.query.count()
     self.assertEqual(newCount, initialCount)
