@@ -106,12 +106,13 @@ success: True
 ```
 
 Errors will be returned in the following format:
-
+```
 {
     "success": False, 
     "error": 400,
     "message": "bad request"
 }
+```
 
 The API will return three error types when requests fail:
 
