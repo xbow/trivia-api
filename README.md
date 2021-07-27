@@ -125,6 +125,7 @@ The API will return three error types when requests fail:
 #### GET /
 
 General: Returns `status: ok` if server is running.
+
 Sample: `curl http://127.0.0.1:5000/`
 
 ```
@@ -230,6 +231,7 @@ Sample: `curl http://127.0.0.1:5000/books`
 #### GET /categories
 
 General: Returns all categories as a dictionary.
+
 Sample: `curl http://127.0.0.1/categories`
 
 ```
