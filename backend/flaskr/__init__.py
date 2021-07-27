@@ -75,7 +75,6 @@ def create_app(test_config=None):
       'success': True,
       'questions': questions,
       'total_questions': len(questions),
-      'current_category': None
       })
 
     
@@ -119,7 +118,6 @@ def create_app(test_config=None):
       'questions': questions,
       'categories': categories,
       'total_questions': len(questions_query),
-      'current_category': None
       })
 
 
